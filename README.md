@@ -46,6 +46,10 @@ AUTH_USER_MODEL='users.FoodgramUser'
 ```docker-compose exec backend python manage.py makemigration```
 ```docker-compose exec backend python manage.py migrate```
 
+### Загрузить данные:
+
+```docker-compose exec backend python manage.py update```
+
 ### Cобрать статику:
 
 ```docker-compose exec backend python manage.py collectstatic```
