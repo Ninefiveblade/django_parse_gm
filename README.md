@@ -62,4 +62,8 @@ AUTH_USER_MODEL='users.FoodgramUser'
 
 [LICENSE MIT](LICENSE)
 
-
+### Contacts:
+tel: +79651995387
+resume: https://poputnaya.hh.ru/resume/d2d75a43ff096c8d2b0039ed1f4771374c626a
+e-mail: seevvia@gmail.com / cherep1.92@yandex.ru
+telegram: @alexeevone
