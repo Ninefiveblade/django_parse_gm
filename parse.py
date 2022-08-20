@@ -3,6 +3,7 @@ import os
 import time
 import json
 
+from tqdm import tqdm
 from selenium import webdriver
 from selenium.webdriver import ChromeOptions
 from selenium.webdriver.common.by import By
@@ -50,7 +51,7 @@ def parse(driver, url, json_path):
         data = json.load(f)  # Загружаем файл json.
 
     reviews_overall = 0  # Считаем количество комментариев.
-    for row in div2:
+    for row in tqdm(div2):
         name = row.find('div', class_="d4r55").text
         date = row.find('div', class_="DU9Pgb").find(
             "span", class_="rsqaWe"
@@ -92,6 +93,7 @@ def main():
         url = f.readline()
     driver.get(url)
     parse(driver, url, json_path)
+    print("Success, check dump.json file")
 
 
 if __name__ == "__main__":
