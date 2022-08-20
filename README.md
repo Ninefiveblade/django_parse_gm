@@ -60,6 +60,6 @@ AUTH_USER_MODEL='users.FoodgramUser'
 
 ### License:
 
-[LICENSE MIT](LICENSE.md)
+[LICENSE MIT](LICENSE)
 
 
