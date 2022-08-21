@@ -5,7 +5,6 @@ from time import sleep
 from tqdm import tqdm
 from selenium import webdriver
 from selenium.webdriver import ChromeOptions
-from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 from selenium.webdriver.common.action_chains import ActionChains
@@ -34,20 +33,47 @@ def zoomout(driver) -> None:
 
 def parse_farmacy(driver) -> None:
     """Парсинг всех аптек на выбранной карте."""
+    element = driver.find_element(
+        By.CSS_SELECTOR,
+        (
+            '#QA0Szd > div > div > div.w6VYqd > '
+            'div.bJzME.tTVLSc > div > '
+            'div.e07Vkf.kA9KIf > div > div > '
+            'div.m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd'
+        )
+    )
+    scroll_origin = ScrollOrigin.from_element(element)
+
+    while True:
+        ActionChains(driver)\
+            .scroll_from_origin(scroll_origin, 0, 600)\
+            .perform()
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        if soup.find("div", class_="PbZDve") is not None:
+            break
+        if soup.find("div", class_="njRcn") is not None:
+            break
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
     div1 = soup.find("div", class_="XltNde tTVLSc")
     first_last = div1.find_all("div", class_="Nv2PK Q2HXcd THOPZb")
     middle = div1.find_all("div", class_="Nv2PK THOPZb tH5CWc")
+    count = 0
     if first_last:
         for row in first_last:
             name = row["aria-label"]
             card_link = row.find("a")["href"]
+            if name in storage.keys():
+                count += 1
+                name += f" Номер {count}"
             storage[name] = card_link
     if middle:
         for row in middle:
             name = row["aria-label"]
             card_link = row.find("a")["href"]
+            if name in storage.keys():
+                count += 1
+                name += f" Номер {count}"
             storage[name] = card_link
 
 
@@ -56,46 +82,35 @@ def parse_card(storage: dict, driver) -> None:
 
     for name, link in storage.items():
         driver.get(link)
-        sleep(1)
-        try:
-            farm_stars = driver.find_element(
-                By.CSS_SELECTOR, (
-                    '#QA0Szd > div > div > div.w6VYqd > '
-                    'div.bJzME.tTVLSc > div > '
-                    'div.e07Vkf.kA9KIf > div > div > '
-                    'div.TIHn2 > div.tAiQdd > div.lMbq3e > '
-                    'div.LBgpqf > div > div.fontBodyMedium.dmRWX > '
-                    'div.F7nice.mmu3tf > span > span > span.ceNzKf'
-                )
-            ).get_attribute("aria-label")
-        except NoSuchElementException:
-            farm_stars = "Нет звезд"
-        try:
-            overall_reviews = driver.find_element(
-                By.CSS_SELECTOR, (
-                    '#QA0Szd > div > div > div.w6VYqd > '
-                    'div.bJzME.tTVLSc > div > div.e07Vkf.kA9KIf > '
-                    'div > div > div.TIHn2 > div.tAiQdd > '
-                    'div.lMbq3e > div.LBgpqf > div > '
-                    'div.fontBodyMedium.dmRWX > span:nth-child(3) > '
-                    'span > span > span.F7nice.mmu3tf > '
-                    'span:nth-child(1) > button'
-                )
-            ).text
-        except NoSuchElementException:
-            overall_reviews = "Нет отзывов"
-        try:
-            source = driver.find_element(
-                By.CSS_SELECTOR, (
-                    '#QA0Szd > div > div > div.w6VYqd > '
-                    'div.bJzME.tTVLSc > div > div.e07Vkf.kA9KIf > '
-                    'div > div > div:nth-child(9) > div:nth-child(5) > '
-                    'a > div.AeaXub > div.rogA2c.ITvuef > '
-                    'div.Io6YTe.fontBodyMedium'
-                )
-            ).text
-        except NoSuchElementException:
-            source = "Нет ресурса"
+        sleep(0.5)
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        if soup.find("div", "fontBodyMedium dmRWX") is not None:
+            farm_stars = soup.find(
+                "div", "fontBodyMedium dmRWX"
+            ).find("div", class_="F7nice mmu3tf")
+            if farm_stars is not None:
+                farm_stars = farm_stars.find("span", class_="ceNzKf")
+                if farm_stars is not None:
+                    farm_stars = farm_stars["aria-label"]
+        else:
+            farm_stars = "-"
+        if soup.find("span", class_="mgr77e") is not None:
+            overall_reviews = soup.find("span", class_="mgr77e").find(
+                "button", class_="DkEaL"
+            )
+            if overall_reviews is not None:
+                overall_reviews = overall_reviews.text
+            else:
+                overall_reviews = "-"
+        else:
+            overall_reviews = "-"
+        if soup.find("div", "rogA2c ITvuef") is not None:
+            source = soup.find(
+                "div", "rogA2c ITvuef"
+            ).find("div", class_="Io6YTe fontBodyMedium").text
+        else:
+            source = "-"
+        print(farm_stars, overall_reviews, source)
         storage1[name] = [link, farm_stars, overall_reviews, source]
 
 
@@ -105,8 +120,8 @@ def parse_reviews(storage1: dict, driver, farm_data) -> None:
     for name, array in storage1.items():
         link = array[0]
         driver.get(link)
-        if array[2] == "Нет отзывов":
-            pass
+        if array[2] == "-":
+            continue
         else:
             try:
                 more_reviews = driver.find_element(
@@ -136,7 +151,7 @@ def parse_reviews(storage1: dict, driver, farm_data) -> None:
                     ' отзывов', ''
                 ).replace(' отзыва', '').replace(' отзыв', '')
                 last_review = int(number_reviews)*9
-                for i in range(last_review):
+                for i in tqdm(range(last_review)):
                     ActionChains(driver)\
                         .scroll_from_origin(scroll_origin, 0, 200)\
                         .perform()
@@ -166,6 +181,7 @@ def parse_reviews(storage1: dict, driver, farm_data) -> None:
                     ])
             except Exception as er:
                 print(er)
+                continue
 
 
 def find_coordinates(data, driver, zoom: str) -> None:
@@ -209,7 +225,7 @@ def main() -> None:
         farm_data = json.load(f)
     with open(path_coor_data, encoding='utf-8') as f:
         data = json.load(f)
-    zoom = "14.9z"
+    zoom = "15.6z"
     chrome_options = ChromeOptions()
     chrome_options.add_argument("--enable-javascript")
     driver = webdriver.Chrome(path, chrome_options=chrome_options)

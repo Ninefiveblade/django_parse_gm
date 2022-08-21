@@ -13,6 +13,9 @@ Django 2.2.16, beautifulsoup4 4.11.1, selenium 4.4.3
 ### Установить зависимости
 ```pip install -r /backend/requirements.txt```
 
+### Добавить в файл coordinates.json координаты
+### Необходимые для поиска аптек по местности.
+
 ### !!!Иметь браузер chrome версии 104
 ### !!!Запустить парсер 1 раз из папки проекта:
 ```python parse.py``` 
@@ -61,6 +64,8 @@ AUTH_USER_MODEL='users.FoodgramUser'
 ### Зайти в админку:
 
 [127.0.0.1/admin](http://127.0.0.1/admin)
+
+### Пример результата парсинга в файле sample.json
 
 ### License:
 
