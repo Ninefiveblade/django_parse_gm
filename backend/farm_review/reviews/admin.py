@@ -8,8 +8,10 @@ class FarmAdmin(admin.ModelAdmin):
         'name',
         'url',
         'reviews_overall',
+        'resource',
+        'rating'
     )
-    list_filter = ("name",)
+    list_filter = ('name', 'rating')
 
 
 class ReviewAdmin(admin.ModelAdmin):
@@ -19,11 +21,10 @@ class ReviewAdmin(admin.ModelAdmin):
         'comment',
         'stars',
         'date',
-        'resource'
     )
 
     search_fields = ('comment',)
-    list_filter = ('stars', 'date', 'resource')
+    list_filter = ('stars', 'date')
 
 
 admin.site.register(Farm, FarmAdmin)

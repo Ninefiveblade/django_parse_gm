@@ -1,9 +1,6 @@
 """Модуль моделей для аптеки."""
 
 from django.db import models
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
 
 
 class Farm(models.Model):
@@ -12,15 +9,24 @@ class Farm(models.Model):
     name = models.CharField(
         max_length=255,
         verbose_name="Название аптеки",
-        db_index=True
+        db_index=True,
     )
     url = models.URLField(
         max_length=255,
         verbose_name="Url карточки аптеки",
     )
-    reviews_overall = models.IntegerField(
+    rating = models.CharField(
+        max_length=255,
+        verbose_name="Рейтинг аптеки",
+        db_index=True
+    )
+    reviews_overall = models.CharField(
+        max_length=255,
         verbose_name="Количество отзыов",
-        blank=False,
+    )
+    resource = models.CharField(
+        max_length=100,
+        verbose_name="Источник",
     )
 
     def __str__(self) -> str:
@@ -63,11 +69,6 @@ class Review(models.Model):
         max_length=255,
         verbose_name="Когда оставлен отзыв",
         blank=False
-    )
-    resource = models.CharField(
-        max_length=100,
-        verbose_name="Источник",
-        default="Google Maps",
     )
 
     def __str__(self) -> str:

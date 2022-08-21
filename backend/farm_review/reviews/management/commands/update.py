@@ -16,28 +16,28 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         models.Farm.objects.all().delete()
         models.Review.objects.all().delete()
-        with open(f"{data}/dump.json", "r") as j:
+        with open(f"{data}/famacy.json", "r") as j:
             data_dict = json.loads(j.read())
-            farmacy = models.Farm.objects.get_or_create(
-                id=1,
-                name=data_dict["pharmacy"][0][:18],
-                url=data_dict["pharmacy_url"][0][:254],
-                reviews_overall=data_dict["reviews_overall"][0],
-            )
             try:
                 count = 0
-                for a in tqdm(data_dict["reviews"]):
+                for a in tqdm(data_dict["farmacy"]):
                     count += 1
+                    farmacy = models.Farm.objects.get_or_create(
+                        name=a[0]["name"],
+                        url=a[1]["link"][:254],
+                        rating=a[2]["farm_stars"],
+                        reviews_overall=a[3]["overall_reviews"],
+                        resource=a[4]["source"]
+                    )
                     models.Review.objects.get_or_create(
                         id=count,
-                        author=a.get("name"),
-                        comment=a.get("comment"),
-                        stars=a.get("stars"),
-                        date=a.get("date"),
+                        author=a[5]["author"],
+                        date=a[6]["date"],
+                        stars=a[7]["stars"],
+                        comment=a[8]["comment"][:254],
                         farm=farmacy[0]
                     )
-                print("Загрузка Отзывов завершена! "
-                      f"Загружено товаров: {len(data_dict)}")
+                print("Загрузка аптек и отзывов завершена!")
             except Exception as er:
                 print("Что-то не так с моделями, путями или базой данных "
                       f"проверьте, ошибка: {er}")
