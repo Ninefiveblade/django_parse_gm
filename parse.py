@@ -1,5 +1,7 @@
 import os
+import sys
 import json
+import logging
 from time import sleep
 
 from tqdm import tqdm
@@ -10,6 +12,22 @@ from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    filename='program.log',
+    format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
+)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+logger.addHandler(handler)
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(funcName)s'
+)
+handler.setFormatter(formatter)
+
 storage = {}
 storage1 = {}
 
@@ -19,7 +37,7 @@ def zoomout(driver) -> None:
     'Искать здесь'."""
 
     zoom_out = driver.find_element(
-        By.XPATH, '//*[@id="widget-zoom-out"]/div'
+        By.XPATH, '//*[@id="widget-zoom-out"]'
     )
     zoom_out.click()
     find_farmacy = driver.find_element(
@@ -43,15 +61,16 @@ def parse_farmacy(driver) -> None:
         )
     )
     scroll_origin = ScrollOrigin.from_element(element)
-
     while True:
         ActionChains(driver)\
             .scroll_from_origin(scroll_origin, 0, 600)\
             .perform()
         soup = BeautifulSoup(driver.page_source, "html.parser")
         if soup.find("div", class_="PbZDve") is not None:
+            logger.info('Тег PbZDve найден, цикл остановлен')
             break
         if soup.find("div", class_="njRcn") is not None:
+            logger.info('Тег njRcn найден, цикл остановлен')
             break
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -67,6 +86,7 @@ def parse_farmacy(driver) -> None:
                 count += 1
                 name += f" Номер {count}"
             storage[name] = card_link
+        logger.info("Успешно выполнено first_last")
     if middle:
         for row in middle:
             name = row["aria-label"]
@@ -74,6 +94,7 @@ def parse_farmacy(driver) -> None:
             if name in storage.keys():
                 count += 1
                 name += f" Номер {count}"
+            logger.info("Успешно выполнено middle")
             storage[name] = card_link
 
 
@@ -110,7 +131,10 @@ def parse_card(storage: dict, driver) -> None:
             ).find("div", class_="Io6YTe fontBodyMedium").text
         else:
             source = "-"
-        print(farm_stars, overall_reviews, source)
+        logger.info(
+            f"Данные успешно парсятся\n"
+            f"{[link, farm_stars, overall_reviews, source]}"
+        )
         storage1[name] = [link, farm_stars, overall_reviews, source]
 
 
@@ -151,7 +175,7 @@ def parse_reviews(storage1: dict, driver, farm_data) -> None:
                     ' отзывов', ''
                 ).replace(' отзыва', '').replace(' отзыв', '')
                 last_review = int(number_reviews)*9
-                for i in tqdm(range(last_review)):
+                for i in range(last_review):
                     ActionChains(driver)\
                         .scroll_from_origin(scroll_origin, 0, 200)\
                         .perform()
@@ -180,7 +204,7 @@ def parse_reviews(storage1: dict, driver, farm_data) -> None:
                         {"comment": comment.strip()}
                     ])
             except Exception as er:
-                print(er)
+                logger.error(f'Произошла ошибка {er}')
                 continue
 
 
@@ -190,11 +214,15 @@ def find_coordinates(data, driver, zoom: str) -> None:
     for coordinates in data['coordinates']:
         lat = coordinates['lat']
         lon = coordinates['lon']
-        url = f"https://www.google.com/maps/search/аптека/@{lat},{lon},{zoom}"
+        url = (
+            f"https://www.google.com/maps/search/"
+            f"farmàcia/@{lat},{lon},{zoom}"
+        )
         driver.get(url)
         try:
             zoomout(driver)
-        except Exception:
+        except Exception as er:
+            logger.error(f'Произошла ошибка {er}')
             continue
 
 
@@ -207,7 +235,6 @@ def main() -> None:
     path_farm_data - подготавливаем к записи
     файл json.
     driver - запускаем браузер,
-    logging решил не исользовать.
     find_coordinates - Поиск по частям карты,
     zoomout - поиск аптек на элементах карты,
     parse_farmacy - парсинг аптек,
@@ -218,6 +245,9 @@ def main() -> None:
     для передачи в parse_reviews.
     """
 
+    TIME_OUT = 180
+    RETRY_TIME = 600
+    RETRY_COUNT = 2
     path = os.path.abspath("backend/data/chromedriver")
     path_farm_data = os.path.abspath("backend/data/famacy.json")
     path_coor_data = os.path.abspath("backend/data/coordinates.json")
@@ -225,19 +255,29 @@ def main() -> None:
         farm_data = json.load(f)
     with open(path_coor_data, encoding='utf-8') as f:
         data = json.load(f)
-    zoom = "15.6z"
+    zoom = "15z"
     chrome_options = ChromeOptions()
     chrome_options.add_argument("--enable-javascript")
     driver = webdriver.Chrome(path, chrome_options=chrome_options)
-    driver.implicitly_wait(10)
+    driver.implicitly_wait(TIME_OUT)
     find_coordinates(data, driver, zoom)
     if storage:
         parse_card(storage, driver)
-    if storage1:
-        parse_reviews(storage1, driver, farm_data)
+    for _ in range(RETRY_COUNT):
+        try:
+            if storage1:
+                parse_reviews(storage1, driver, farm_data)
+            break
+        except Exception as er:
+            logger.error(
+                f"Произошла ошибка {er}"
+            )
+            logger.info(f"Сон на {RETRY_TIME} секунд")
+            sleep(RETRY_TIME)
     with open(path_farm_data, 'w', encoding='utf-8') as outfile:
         json.dump(farm_data, outfile, ensure_ascii=False, indent=2)
     driver.close()
+    logger.info("Программа успешно выолнена")
     print("All Done!")
 
 

@@ -25,7 +25,9 @@ class Command(BaseCommand):
                     farmacy = models.Farm.objects.get_or_create(
                         name=a[0]["name"],
                         url=a[1]["link"][:254],
-                        rating=a[2]["farm_stars"],
+                        rating=a[2]["farm_stars"].replace(
+                            "Информация о COVID-19 ·", ""
+                        ),
                         reviews_overall=a[3]["overall_reviews"],
                         resource=a[4]["source"]
                     )
